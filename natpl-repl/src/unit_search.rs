@@ -102,7 +102,7 @@ fn closest_match(
                 .or_insert_with(|| (Some(*prefix), val.clone(), dist));
         }
 
-        let dist = num_distance(v, &m, 0.5);
+        let dist = num_distance(v, m, 0.5);
 
         rating
             .entry(name.clone())
@@ -140,8 +140,8 @@ fn num_distance(a: &BigDecimal, b: &BigDecimal, handicap: f64) -> Rating {
         div_abs = 1.into();
     }
 
-    // Only take numbers between 1 and 999
-    if div_abs < BigDecimal::from(1) || div_abs > BigDecimal::from(999) {
+    // Only take numbers between 1 and 1000
+    if div_abs < BigDecimal::from(1) || div_abs >= BigDecimal::from(100) {
         Rating::max_value()
     } else {
         (div_abs.to_f64().unwrap_or(std::f64::NAN) * handicap) as Rating

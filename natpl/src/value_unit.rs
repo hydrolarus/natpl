@@ -20,7 +20,7 @@ impl Display for ValueKind {
         match self {
             ValueKind::FunctionRef(name) => f.write_fmt(format_args!("<function {}>", name)),
             ValueKind::Number(num) => {
-                let (int, dec, exp, sign) = dec_in_scientific_notation(&num);
+                let (int, dec, exp, sign) = dec_in_scientific_notation(num);
 
                 if exp < -50 {
                     return f.write_str("≈0");
@@ -120,7 +120,7 @@ impl Unit {
                 .or_insert_with(|| -val.clone())
                 .clone();
 
-            if total == 0.into() {
+            if total.abs() == 0.into() {
                 parts.remove(name);
             }
         }

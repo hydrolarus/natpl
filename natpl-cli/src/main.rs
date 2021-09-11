@@ -23,7 +23,7 @@ pub enum LoadFileError {
 /// If `print` is true then printed-expressions are printed to stdout.
 pub fn load_file(rt: &mut Runtime, content: &str, print: bool) -> Result<(), LoadFileError> {
     for (line, source) in content.lines().enumerate() {
-        let toks = tokenising::tokenise(&source);
+        let toks = tokenising::tokenise(source);
         let item = match parsing::Parser::parse_line(&toks) {
             Ok(item) => item,
             Err(err) => {

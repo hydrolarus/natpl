@@ -366,10 +366,8 @@ impl Runtime {
                 kind: ValueKind::Number(BigDecimal::from(1)),
                 unit: Unit::new_named(name.clone()),
             })
-        } else if let Some(val) = self.unit_aliases.get(name) {
-            Some(val.clone())
         } else {
-            None
+            self.unit_aliases.get(name).cloned()
         }
     }
 

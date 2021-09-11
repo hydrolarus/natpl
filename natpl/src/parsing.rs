@@ -389,7 +389,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
             [] => Err(ParseError::UnexpectedEnd),
             [(t, span), rest @ ..] => {
                 let fc = FC::from(span);
-                match f(fc, *t).as_option() {
+                match f(fc, *t).into_option() {
                     Some(res) => {
                         self.toks = rest;
                         Ok(res)
@@ -408,7 +408,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
             [] => Err(ParseError::UnexpectedEnd),
             [(t, span), rest @ ..] => {
                 let fc = FC::from(span);
-                match f(*t).as_option() {
+                match f(*t).into_option() {
                     Some(res) => {
                         self.toks = rest;
                         Ok((fc, res))
@@ -432,7 +432,8 @@ fn prefix_binding_power(t: Token<'_>) -> Option<((), u8)> {
 fn infix_binding_power(t: Token<'_>) -> Option<(u8, u8, InfixOp)> {
     match t {
         Token::OpPow => Some((151, 150, InfixOp::Pow)),
-        Token::OpMul | Token::Identifier(_) => Some((80, 81, InfixOp::Mul)),
+        Token::Identifier(_) => Some((90, 91, InfixOp::Mul)),
+        Token::OpMul => Some((80, 81, InfixOp::Mul)),
         Token::OpDiv => Some((80, 81, InfixOp::Div)),
         Token::OpMod => Some((80, 81, InfixOp::Mod)),
         Token::OpAdd => Some((70, 71, InfixOp::Add)),
@@ -505,13 +506,13 @@ fn identifier_maybe_unit_prefix(name: &str) -> Option<(SiPrefix, &str)> {
 trait ExpectRet {
     type RetType;
 
-    fn as_option(self) -> Option<Self::RetType>;
+    fn into_option(self) -> Option<Self::RetType>;
 }
 
 impl<T> ExpectRet for Option<T> {
     type RetType = T;
 
-    fn as_option(self) -> Option<Self::RetType> {
+    fn into_option(self) -> Option<Self::RetType> {
         self
     }
 }
@@ -519,7 +520,7 @@ impl<T> ExpectRet for Option<T> {
 impl ExpectRet for bool {
     type RetType = ();
 
-    fn as_option(self) -> Option<Self::RetType> {
+    fn into_option(self) -> Option<Self::RetType> {
         if self {
             Some(())
         } else {

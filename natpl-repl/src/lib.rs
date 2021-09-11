@@ -41,7 +41,7 @@ pub enum ReadEvalResult {
 }
 
 pub fn read_eval(rt: &mut Runtime, input: &str) -> ReadEvalResult {
-    let toks = tokenising::tokenise(&input);
+    let toks = tokenising::tokenise(input);
     match Parser::parse_line(&toks) {
         Ok(line) => {
             let res = match rt.eval_line_item(line, &mut CallStack::default()) {

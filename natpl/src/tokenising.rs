@@ -160,6 +160,6 @@ fn unicode_power_num(input: &str) -> Option<u64> {
     })
 }
 
-pub fn tokenise<'src>(line: &'src str) -> Vec<(Token<'src>, Span)> {
+pub fn tokenise(line: &'_ str) -> Vec<(Token<'_>, Span)> {
     Token::lexer(line).spanned().collect()
 }
