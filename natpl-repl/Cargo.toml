@@ -9,4 +9,4 @@ edition = "2018"
 [dependencies]
 natpl = { path = "../natpl" }
 thiserror = "1.0"
-fraction = "0.7.0"
+fraction = "0.9.0"

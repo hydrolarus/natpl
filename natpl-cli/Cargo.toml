@@ -13,6 +13,6 @@ name = "natpl"
 [dependencies]
 natpl = { path = "../natpl" }
 natpl-repl = { path = "../natpl-repl" }
-owo-colors = "1.0"
+owo-colors = "2.0"
 rustyline = "*"
 thiserror = "1.0"
