@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::{
     syntax::{Expression, HasFC, InfixOp, Item, LineItem, Name, PrefixOp, SiPrefix, FC},
-    value_unit::{Unit, Value, ValueKind},
+    value_unit::{Unit, Value, ValueKind, ValueKindNumberZipResult},
 };
 
 use fraction::{BigDecimal, ToPrimitive};
@@ -321,16 +321,35 @@ impl Runtime {
                         ValueKind::FunctionRef(_) => {
                             Err(EvalError::InvalidPrefixOperator(*fc, *op, val))
                         }
+                        ValueKind::Vector(_) => Ok(val),
                     },
-                    crate::syntax::PrefixOp::Neg => match &mut val.kind {
-                        ValueKind::Number(num) => {
-                            *num = -&*num;
-                            Ok(val)
+                    crate::syntax::PrefixOp::Neg => {
+                        fn negate(
+                            fc: &FC,
+                            op: &PrefixOp,
+                            val: &Value,
+                            val_kind: &ValueKind,
+                        ) -> Result<ValueKind, EvalError> {
+                            match val_kind {
+                                ValueKind::Number(num) => Ok(ValueKind::Number(-&*num)),
+                                ValueKind::FunctionRef(_) => {
+                                    Err(EvalError::InvalidPrefixOperator(*fc, *op, val.clone()))
+                                }
+                                ValueKind::Vector(v) => {
+                                    let vals = v
+                                        .iter()
+                                        .map(|vk| negate(fc, op, val, vk))
+                                        .collect::<Result<_, _>>()?;
+                                    Ok(ValueKind::Vector(vals))
+                                }
+                            }
                         }
-                        ValueKind::FunctionRef(_) => {
-                            Err(EvalError::InvalidPrefixOperator(*fc, *op, val))
-                        }
-                    },
+
+                        Ok(Value {
+                            kind: negate(fc, op, &val, &val.kind)?,
+                            unit: val.unit,
+                        })
+                    }
                 }
             }
             Expression::InfixOp { fc, op, lhs, rhs } => {
@@ -344,6 +363,36 @@ impl Runtime {
                 })
             }
             Expression::Parenthesised(_, expr) => self.eval_expr(expr, call_stack),
+            Expression::Vector(_, elems) => {
+                let elems: Vec<_> = elems
+                    .iter()
+                    .map(|e| Ok((e.fc(), self.eval_expr(e, call_stack)?)))
+                    .collect::<Result<_, EvalError>>()?;
+
+                if elems.is_empty() {
+                    Ok(Value {
+                        kind: ValueKind::Vector(Vec::new()),
+                        unit: Unit::new(),
+                    })
+                } else {
+                    let mut iter = elems.iter();
+
+                    let unit = iter.next().map(|(_, v)| v.unit.clone()).unwrap();
+                    for (fc, elem) in iter {
+                        if unit != elem.unit {
+                            return Err(EvalError::UnitError(UnitError::UnitMismatch {
+                                expected: unit,
+                                found: elem.unit.clone(),
+                                fc: *fc,
+                            }));
+                        }
+                    }
+                    Ok(Value {
+                        kind: ValueKind::Vector(elems.into_iter().map(|(_, v)| v.kind).collect()),
+                        unit,
+                    })
+                }
+            }
         }
     }
 
@@ -384,25 +433,73 @@ impl Runtime {
 
         let unit = infix_unit(fc, op, &lhs, &rhs)?;
 
+        macro_rules! zip {
+            ($a:expr, $b:expr, $f:expr) => {
+                match $a.zip_number($b, &$f) {
+                    ValueKindNumberZipResult::Success(val) => val,
+                    ValueKindNumberZipResult::ArityMismatch(_, _) => {
+                        return Err(EvalError::InfixArityMismatch(fc, op, lhs, rhs))
+                    }
+                    ValueKindNumberZipResult::KindMismatch(_, _)
+                    | ValueKindNumberZipResult::FoundNonNumber(_, _) => {
+                        return Err(EvalError::InvalidInfixOperator(fc, op, lhs, rhs))
+                    }
+                }
+            };
+        }
+
+        macro_rules! map {
+            ($a:expr, $f:expr) => {
+                match $a.map_number(&$f) {
+                    Some(val) => val,
+                    None => return Err(EvalError::InvalidInfixOperator(fc, op, lhs, rhs)),
+                }
+            };
+        }
+
         match (op, &lhs.kind, &rhs.kind) {
-            (InfixOp::Add, ValueKind::Number(a), ValueKind::Number(b)) => Ok(Value {
-                kind: ValueKind::Number(a + b),
+            (InfixOp::Add, a, b) => Ok(Value {
+                kind: zip!(a, b, |a, b| a + b),
                 unit,
             }),
-            (InfixOp::Sub, ValueKind::Number(a), ValueKind::Number(b)) => Ok(Value {
-                kind: ValueKind::Number(a - b),
+            (InfixOp::Sub, a, b) => Ok(Value {
+                kind: zip!(a, b, |a, b| a - b),
                 unit,
             }),
-            (InfixOp::Mul, ValueKind::Number(a), ValueKind::Number(b)) => Ok(Value {
-                kind: ValueKind::Number(a * b),
+            (InfixOp::Mul, ValueKind::Number(a), b) => Ok(Value {
+                kind: map!(b, |x| a * x),
                 unit,
             }),
-            (InfixOp::Div, ValueKind::Number(a), ValueKind::Number(b)) => Ok(Value {
-                kind: ValueKind::Number(a / b),
+            (InfixOp::Mul, a, ValueKind::Number(b)) => Ok(Value {
+                kind: map!(a, |x| b * x),
                 unit,
             }),
-            (InfixOp::Mod, ValueKind::Number(a), ValueKind::Number(b)) => Ok(Value {
-                kind: ValueKind::Number(a % b),
+            (InfixOp::Mul, a, b) => Ok(Value {
+                kind: zip!(a, b, |a, b| a * b),
+                unit,
+            }),
+            (InfixOp::Div, ValueKind::Number(a), b) => Ok(Value {
+                kind: map!(b, |x| a / x),
+                unit,
+            }),
+            (InfixOp::Div, a, ValueKind::Number(b)) => Ok(Value {
+                kind: map!(a, |x| b / x),
+                unit,
+            }),
+            (InfixOp::Div, a, b) => Ok(Value {
+                kind: zip!(a, b, |a, b| a / b),
+                unit,
+            }),
+            (InfixOp::Mod, ValueKind::Number(a), b) => Ok(Value {
+                kind: map!(b, |x| a % x),
+                unit,
+            }),
+            (InfixOp::Mod, a, ValueKind::Number(b)) => Ok(Value {
+                kind: map!(a, |x| b % x),
+                unit,
+            }),
+            (InfixOp::Mod, a, b) => Ok(Value {
+                kind: zip!(a, b, |a, b| a % b),
                 unit,
             }),
             (InfixOp::Pow, ValueKind::Number(a), ValueKind::Number(b)) => {
@@ -469,14 +566,14 @@ impl Runtime {
                     todo!()
                 }
             }
-            (InfixOp::Eq, ValueKind::Number(a), ValueKind::Number(b)) => {
+            (InfixOp::Eq, a, b) => {
                 if a == b {
                     Ok(lhs.clone())
                 } else {
                     Err(EvalError::EqualtyError(fc, op, lhs.clone(), rhs.clone()))
                 }
             }
-            (InfixOp::Neq, ValueKind::Number(a), ValueKind::Number(b)) => {
+            (InfixOp::Neq, a, b) => {
                 if a != b {
                     Ok(Value {
                         kind: ValueKind::Number(1.into()),
@@ -501,13 +598,29 @@ impl Runtime {
     }
 }
 
-fn apply_prefix(fc: FC, prefix: SiPrefix, mut val: Value) -> Result<Value, EvalError> {
-    let kind = match &val.kind {
-        ValueKind::Number(n) => ValueKind::Number(&prefix.value() * n),
-        ValueKind::FunctionRef(_) => return Err(EvalError::InvalidSiPrefix(fc, prefix, val)),
-    };
-    val.kind = kind;
-    Ok(val)
+fn apply_prefix(fc: FC, prefix: SiPrefix, val: Value) -> Result<Value, EvalError> {
+    fn apply_to_value_kind(
+        fc: FC,
+        prefix: SiPrefix,
+        val: &Value,
+        kind: &ValueKind,
+    ) -> Result<ValueKind, EvalError> {
+        match kind {
+            ValueKind::FunctionRef(_) => Err(EvalError::InvalidSiPrefix(fc, prefix, val.clone())),
+            ValueKind::Number(n) => Ok(ValueKind::Number(&prefix.value() * n)),
+            ValueKind::Vector(v) => {
+                let vals = v
+                    .iter()
+                    .map(|vk| apply_to_value_kind(fc, prefix, val, vk))
+                    .collect::<Result<_, _>>()?;
+                Ok(ValueKind::Vector(vals))
+            }
+        }
+    }
+    Ok(Value {
+        kind: apply_to_value_kind(fc, prefix, &val, &val.kind)?,
+        unit: val.unit,
+    })
 }
 
 fn infix_unit(fc: FC, op: InfixOp, lhs: &Value, rhs: &Value) -> Result<Unit, UnitError> {
@@ -646,6 +759,9 @@ pub enum EvalError {
         num_args_expected: usize,
         num_args_applied: usize,
     },
+
+    #[error("Arity mismatch on infix operator {:?} on {} [{}] and {} [{}]", .1, .2.kind, .2.unit, .3.kind, .3.unit)]
+    InfixArityMismatch(FC, InfixOp, Value, Value),
 
     #[error("Unit error: {}", .0)]
     UnitError(#[from] UnitError),

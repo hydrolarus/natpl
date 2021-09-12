@@ -25,7 +25,7 @@ macro_rules! functions {
             }
 
             macro_rules! argument_count_check {
-                ($expected:expr) => {
+                ($expected:expr) => {{
                     if args.len() != $expected {
                         return Some(Err(EvalError::CallArgumentMismatch {
                             fc,
@@ -34,7 +34,8 @@ macro_rules! functions {
                             num_args_applied: args.len(),
                         }));
                     }
-                };
+                    args
+                }};
             }
 
             macro_rules! unary {
@@ -46,11 +47,9 @@ macro_rules! functions {
                         return Some(Err(EvalError::UnitError(UnitError::UnitMismatch { fc: *arg_fc, found: arg.unit.clone(), expected: Unit::new() })))
                     }
 
-                    let kind = match &arg.kind {
-                        ValueKind::Number(n) => {
-                            ValueKind::Number($do_fn(n))
-                        }
-                        _ => return Some(Err(EvalError::ValueKindMismatch(*arg_fc, arg.clone()))),
+                    let kind = match arg.kind.map_number(&|n| $do_fn(n)) {
+                        Some(kind) => kind,
+                        None => return Some(Err(EvalError::ValueKindMismatch(*arg_fc, arg.clone()))),
                     };
 
                     let unit = $unit_fn(&arg.unit);
@@ -111,4 +110,21 @@ functions! {
     ln => unary_unitless_float!(|f: Float| f.ln()),
 
     exp => unary_unitless_float!(|f: Float| f.exp()),
+
+    len => {
+        let args = argument_count_check!(1);
+        let (arg_fc, arg) = &args[0];
+
+        match &arg.kind {
+            ValueKind::Vector(e) => {
+                Ok(Value {
+                    kind: ValueKind::Number(e.len().into()),
+                    unit: Unit::new()
+                })
+            }
+            _ => {
+                Err(EvalError::ValueKindMismatch(*arg_fc, arg.clone()))
+            }
+        }
+    }
 }

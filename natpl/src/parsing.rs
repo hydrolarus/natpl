@@ -137,11 +137,11 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         let lhs = match self.peek() {
             Some(Token::ParenOpen) => {
                 // function call / definition
-                let (arg_fc, args) = self.paren_list(|p| p.expect_identifier())?;
+                let args = self.paren_list(|p| p.expect_identifier())?;
                 DeclarationLhs::Function {
-                    fc: name.fc().merge(arg_fc),
+                    fc: name.fc().merge(args.fc),
                     name,
-                    args,
+                    args: args.elems,
                 }
             }
             _ => DeclarationLhs::Variable(name),
@@ -221,11 +221,11 @@ impl<'toks, 'src> Parser<'toks, 'src> {
 
                 match t {
                     Token::ParenOpen => {
-                        let (args_fc, args) = self.paren_list(Self::parse_expr)?;
+                        let args = self.paren_list(Self::parse_expr)?;
                         lhs = Expression::Call {
-                            fc: lhs.fc().merge(args_fc),
+                            fc: lhs.fc().merge(args.fc),
                             base: Box::new(lhs),
-                            args,
+                            args: args.elems,
                         };
                     }
                     Token::OpPowNum(n) => {
@@ -271,19 +271,27 @@ impl<'toks, 'src> Parser<'toks, 'src> {
     }
 
     fn parse_expr_atom(&mut self) -> Result<'src, Expression> {
-        let (t, fc) = self.next_with_fc()?;
+        let (t, fc) = self.peek_with_fc().ok_or(ParseError::UnexpectedEnd)?;
         match t {
             Token::BracketOpen => {
+                let _ = self.next()?;
                 let expr = self.parse_expr()?;
                 let (fc_end, ()) = self.expect_and_fc(|t| matches!(t, Token::BracketClose))?;
                 Ok(Expression::UnitOf(fc.merge(fc_end), Box::new(expr)))
             }
             Token::ParenOpen => {
-                let expr = self.parse_expr()?;
-                let (fc_end, ()) = self.expect_and_fc(|t| matches!(t, Token::ParenClose))?;
-                Ok(Expression::Parenthesised(fc.merge(fc_end), Box::new(expr)))
+                let mut res = self.paren_list(Self::parse_expr)?;
+                if res.elems.len() == 1 && !res.trailing_comma {
+                    Ok(Expression::Parenthesised(
+                        res.fc,
+                        Box::new(res.elems.pop().unwrap()),
+                    ))
+                } else {
+                    Ok(Expression::Vector(res.fc, res.elems))
+                }
             }
             Token::Identifier(name) => {
+                let _ = self.next()?;
                 if let Some((prefix, stripped)) = identifier_maybe_unit_prefix(name) {
                     Ok(Expression::MaybeUnitPrefix {
                         fc,
@@ -296,22 +304,38 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                 }
             }
             Token::IntegerLit(val) => {
+                let _ = self.next()?;
                 let val = BigDecimal::from_decimal_str(val).unwrap();
                 Ok(Expression::IntegerLit { fc, val })
             }
-            Token::FloatLit((int, dec)) => Ok(Expression::FloatLit {
-                fc,
-                val: BigDecimal::from_decimal_str(&format!("{}.{}", int, dec)).unwrap(),
-            }),
-            Token::ScientificFloatLit((int, dec, exp)) => Ok(Expression::FloatLit {
-                fc,
-                val: crate::num::from_decimal_str_and_exp(&format!("{}.{}", int, dec), exp as _),
-            }),
-            Token::ScientificIntegerLit((val, exp)) => Ok(Expression::FloatLit {
-                fc,
-                val: crate::num::from_decimal_str_and_exp(&val.to_string(), exp as _),
-            }),
-            t => Err(ParseError::UnexpectedToken(t, fc)),
+            Token::FloatLit((int, dec)) => {
+                let _ = self.next()?;
+                Ok(Expression::FloatLit {
+                    fc,
+                    val: BigDecimal::from_decimal_str(&format!("{}.{}", int, dec)).unwrap(),
+                })
+            }
+            Token::ScientificFloatLit((int, dec, exp)) => {
+                let _ = self.next()?;
+                Ok(Expression::FloatLit {
+                    fc,
+                    val: crate::num::from_decimal_str_and_exp(
+                        &format!("{}.{}", int, dec),
+                        exp as _,
+                    ),
+                })
+            }
+            Token::ScientificIntegerLit((val, exp)) => {
+                let _ = self.next()?;
+                Ok(Expression::FloatLit {
+                    fc,
+                    val: crate::num::from_decimal_str_and_exp(&val.to_string(), exp as _),
+                })
+            }
+            t => {
+                let _ = self.next()?;
+                Err(ParseError::UnexpectedToken(t, fc))
+            }
         }
     }
 
@@ -325,23 +349,30 @@ impl<'toks, 'src> Parser<'toks, 'src> {
     fn paren_list<T>(
         &mut self,
         mut f: impl FnMut(&mut Self) -> Result<'src, T>,
-    ) -> Result<'src, (FC, Vec<T>)> {
+    ) -> Result<'src, ParenListParseResult<T>> {
         let (fc, ()) = self.expect_and_fc(|t| matches!(t, Token::ParenOpen))?;
 
         let mut vals = vec![];
+        let mut trailing_comma = false;
 
         loop {
             if let Some((Token::ParenClose, span)) = self.toks.first() {
                 self.next()?;
-                return Ok((fc.merge(FC::from(span)), vals));
+                return Ok(ParenListParseResult {
+                    fc: fc.merge(FC::from(span)),
+                    elems: vals,
+                    trailing_comma,
+                });
             }
 
             vals.push(f(self)?);
+            trailing_comma = false;
 
             let (fc_, end) = self.expect(|fc, t| {
                 if matches!(t, Token::ParenClose) {
                     Some((fc, true))
                 } else if matches!(t, Token::Comma) {
+                    trailing_comma = true;
                     Some((fc, false))
                 } else {
                     None
@@ -349,15 +380,26 @@ impl<'toks, 'src> Parser<'toks, 'src> {
             })?;
 
             if end {
-                return Ok((fc.merge(fc_), vals));
+                return Ok(ParenListParseResult {
+                    fc: fc.merge(fc_),
+                    elems: vals,
+                    trailing_comma,
+                });
             }
         }
     }
 
-    fn peek(&mut self) -> Option<Token<'src>> {
+    fn peek(&self) -> Option<Token<'src>> {
         match self.toks {
             [] => None,
             [(t, _), ..] => Some(*t),
+        }
+    }
+
+    fn peek_with_fc(&self) -> Option<(Token<'src>, FC)> {
+        match self.toks {
+            [] => None,
+            [(t, span), _rest @ ..] => Some((*t, FC::from_span(span.clone()))),
         }
     }
 
@@ -367,16 +409,6 @@ impl<'toks, 'src> Parser<'toks, 'src> {
             [(t, _), rest @ ..] => {
                 self.toks = rest;
                 Ok(*t)
-            }
-        }
-    }
-
-    fn next_with_fc(&mut self) -> Result<'src, (Token<'src>, FC)> {
-        match self.toks {
-            [] => Err(ParseError::UnexpectedEnd),
-            [(t, span), rest @ ..] => {
-                self.toks = rest;
-                Ok((*t, FC::from_span(span.clone())))
             }
         }
     }
@@ -501,6 +533,12 @@ fn identifier_maybe_unit_prefix(name: &str) -> Option<(SiPrefix, &str)> {
         }
     }
     None
+}
+
+struct ParenListParseResult<T> {
+    fc: FC,
+    elems: Vec<T>,
+    trailing_comma: bool,
 }
 
 trait ExpectRet {

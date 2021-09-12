@@ -190,6 +190,7 @@ pub enum Expression {
     },
 
     UnitOf(FC, Box<Expression>),
+    Vector(FC, Vec<Expression>),
     Parenthesised(FC, Box<Expression>),
 }
 
@@ -412,6 +413,7 @@ impl HasFC for Expression {
             Expression::InfixOp { fc, .. } => *fc,
             Expression::UnitOf(fc, _) => *fc,
             Expression::Parenthesised(fc, _) => *fc,
+            Expression::Vector(fc, _) => *fc,
         }
     }
 }
