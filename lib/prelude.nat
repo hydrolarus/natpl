@@ -2,6 +2,8 @@ unit meter
 unit second
 unit kilogram
 
+unit metre = meter
+
 unit m = meter
 unit L = (0.1 m)^3
 
