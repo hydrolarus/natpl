@@ -6,6 +6,8 @@ unit metre = meter
 
 unit m = meter
 unit L = (0.1 m)^3
+unit litre = L
+unit liter = L
 
 unit s = second
 unit min = 60 s
