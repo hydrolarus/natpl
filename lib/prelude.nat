@@ -7,10 +7,6 @@ unit metre = meter
 unit m = meter
 unit L = (0.1 m)^3
 
-unit kilometer = 1000 * meter
-unit kilometre = kilometer
-unit km = kilometer
-
 unit s = second
 unit min = 60 s
 unit hour = 60 min
