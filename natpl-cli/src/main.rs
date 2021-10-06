@@ -198,6 +198,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if path.exists() {
             let content = std::fs::read_to_string(path)?;
             load_file(&mut rt, &content, true)?;
+        } else if file_path.ends_with(".nat") {
+            println!("File '{}' does not exist", path.display());
         } else {
             let expr = args.join(" ");
             single_expr(&mut rt, &expr)?;
