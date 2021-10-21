@@ -60,7 +60,7 @@ const EXPR_PAD: usize = 12;
 pub fn repl(rt: &mut Runtime) -> Result<(), Box<dyn std::error::Error>> {
     let mut rl = rustyline::Editor::<()>::new();
 
-    let prompt = format!("{} ", ">".blue());
+    let prompt = format!("{} ", ">>>".blue());
 
     loop {
         let readline = rl.readline(&prompt);
@@ -86,10 +86,43 @@ pub fn repl(rt: &mut Runtime) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+enum Marker {
+    Success,
+    Continuation,
+}
+
+fn print_response_line(
+    marker: Marker,
+    // Name to print along with its width
+    name: Option<(&str, usize)>,
+    value: impl ToString,
+    unit_name: &str,
+    expr_pad: usize,
+) {
+    let marker = match marker {
+        Marker::Success => "✔".green().to_string(),
+        Marker::Continuation => "⇒".bright_black().to_string(),
+    };
+
+    let name_part =
+        name.map(|(name, width)| format!("{:width$} {} ", name, "=".bright_black(), width = width));
+    let line = format!(
+        "{}{:expr_pad$} {}{}{}",
+        name_part.unwrap_or_else(|| String::new()),
+        value.to_string(),
+        "[".bright_black(),
+        unit_name.bright_blue(),
+        "]".bright_black(),
+        expr_pad = expr_pad
+    );
+    println!("{} {}", marker, line)
+}
+
 fn single_expr(rt: &mut Runtime, input: &str) -> Result<(), Box<dyn std::error::Error>> {
     match natpl_repl::read_eval(rt, input) {
         ReadEvalResult::ParseError(err) => {
-            eprintln!("Parse error: {}", err);
+            eprintln!("{} Parse error: {}", "✘".red(), err);
         }
         ReadEvalResult::ItemError(err) => {
             eprintln!("{} {}", "✘".red(), err);
@@ -101,13 +134,12 @@ fn single_expr(rt: &mut Runtime, input: &str) -> Result<(), Box<dyn std::error::
         } => {
             for (i, (unit, val)) in display_candidates.iter().take(3).enumerate() {
                 let marker = if i == 0 {
-                    format!("{}", "✔".green())
+                    Marker::Success
                 } else {
-                    format!("{}", "⇒".bright_black())
+                    Marker::Continuation
                 };
 
-                let response = format!("{:expr_pad$} [{}]", val.to_string(), unit, expr_pad = 12);
-                println!("{} {}", marker, response.bright_black());
+                print_response_line(marker, None, &val.to_string(), unit, 12);
             }
         }
         ReadEvalResult::PrintValue {
@@ -119,13 +151,13 @@ fn single_expr(rt: &mut Runtime, input: &str) -> Result<(), Box<dyn std::error::
             let input_slice = &input[range.start..range.end];
 
             let value_part = format!("{} => {}", input_slice, display_candidates[0].1);
-            let response = format!(
-                "{:expr_pad$} [{}]",
+            print_response_line(
+                Marker::Success,
+                None,
                 value_part,
-                display_candidates[0].0,
-                expr_pad = EXPR_PAD
+                &display_candidates[0].0,
+                EXPR_PAD,
             );
-            println!("{} {}", "✔".green(), response.bright_black());
         }
         ReadEvalResult::VariableSearchResult {
             unit_aliases: _,
@@ -137,21 +169,20 @@ fn single_expr(rt: &mut Runtime, input: &str) -> Result<(), Box<dyn std::error::
 
             for (i, (name, display_candidates)) in variables.into_iter().enumerate() {
                 let marker = if i == 0 {
-                    format!("{}", "✔".green())
+                    Marker::Success
                 } else {
-                    format!("{}", "⇒".bright_black())
+                    Marker::Continuation
                 };
 
                 let (unit_name, val_kind) = display_candidates[0].clone();
-                let line = format!(
-                    "{:width$} = {:expr_pad$} [{}]",
-                    name,
+
+                print_response_line(
+                    marker,
+                    Some((&name, name_length)),
                     val_kind.to_string(),
-                    unit_name,
-                    width = name_length,
-                    expr_pad = EXPR_PAD
+                    &unit_name,
+                    EXPR_PAD,
                 );
-                println!("{} {}", marker, line.bright_black());
             }
         }
         ReadEvalResult::UnitSearchResult {
@@ -164,21 +195,19 @@ fn single_expr(rt: &mut Runtime, input: &str) -> Result<(), Box<dyn std::error::
 
             for (i, (name, display_candidates)) in variables.into_iter().enumerate() {
                 let marker = if i == 0 {
-                    format!("{}", "✔".green())
+                    Marker::Success
                 } else {
-                    format!("{}", "⇒".bright_black())
+                    Marker::Continuation
                 };
 
                 let (unit_name, val_kind) = display_candidates[0].clone();
-                let line = format!(
-                    "{:width$} = {:expr_pad$} [{}]",
-                    name,
+                print_response_line(
+                    marker,
+                    Some((&name, name_length)),
                     val_kind.to_string(),
-                    unit_name,
-                    width = name_length,
-                    expr_pad = EXPR_PAD
+                    &unit_name,
+                    EXPR_PAD,
                 );
-                println!("{} {}", marker, line.bright_black());
             }
         }
     }
