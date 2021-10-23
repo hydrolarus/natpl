@@ -109,7 +109,7 @@ fn print_response_line(
         name.map(|(name, width)| format!("{:width$} {} ", name, "=".bright_black(), width = width));
     let line = format!(
         "{}{:expr_pad$} {}{}{}",
-        name_part.unwrap_or_else(|| String::new()),
+        name_part.unwrap_or_else(String::new),
         value.to_string(),
         "[".bright_black(),
         unit_name.bright_blue(),

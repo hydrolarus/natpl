@@ -40,6 +40,8 @@ pub enum ReadEvalResult {
     },
 }
 
+const ANS_NAME: &str = "ans";
+
 pub fn read_eval(rt: &mut Runtime, input: &str) -> ReadEvalResult {
     let toks = tokenising::tokenise(input);
     match Parser::parse_line(&toks) {
@@ -51,15 +53,21 @@ pub fn read_eval(rt: &mut Runtime, input: &str) -> ReadEvalResult {
 
             match res {
                 EvalResult::Empty => ReadEvalResult::Empty,
-                EvalResult::Value(val) => ReadEvalResult::SilentValue {
-                    display_candidates: unit_matches(rt, &val).collect(),
-                    value: val,
-                },
-                EvalResult::PrintValue(expr, val) => ReadEvalResult::PrintValue {
-                    expr,
-                    display_candidates: unit_matches(rt, &val).collect(),
-                    value: val,
-                },
+                EvalResult::Value(val) => {
+                    let _ = rt.set_variable(ANS_NAME, val.clone());
+                    ReadEvalResult::SilentValue {
+                        display_candidates: unit_matches(rt, &val).collect(),
+                        value: val,
+                    }
+                }
+                EvalResult::PrintValue(expr, val) => {
+                    let _ = rt.set_variable(ANS_NAME, val.clone());
+                    ReadEvalResult::PrintValue {
+                        expr,
+                        display_candidates: unit_matches(rt, &val).collect(),
+                        value: val,
+                    }
+                }
                 EvalResult::VariableSearchResult {
                     unit_aliases,
                     variables,
