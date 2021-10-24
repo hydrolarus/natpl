@@ -42,6 +42,14 @@ impl Runtime {
         Default::default()
     }
 
+    pub fn get_variable(&self, name: &str) -> Option<Value> {
+        self.variables.get(name).cloned()
+    }
+
+    pub fn set_variable(&mut self, name: &str, value: Value) {
+        let _ = self.variables.insert(name.to_string(), value);
+    }
+
     pub fn eval_line_item(
         &mut self,
         item: LineItem,
