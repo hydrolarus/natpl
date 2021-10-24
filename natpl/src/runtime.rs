@@ -401,6 +401,38 @@ impl Runtime {
                     })
                 }
             }
+            Expression::Indexed { fc, expr, index } => {
+                let expr = self.eval_expr(expr, call_stack)?;
+                let index = self.eval_expr(index, call_stack)?;
+
+                let vec = match &expr.kind {
+                    ValueKind::Vector(vec) => vec,
+                    _ => return Err(EvalError::InvalidIndexedType(*fc, expr)),
+                };
+
+                let idx = match &index.kind {
+                    ValueKind::Number(idx) if index.unit == Unit::new() => match idx.to_usize() {
+                        Some(idx) => idx,
+                        // Reject fractions
+                        None if idx.fract().abs() != 0.into() => {
+                            return Err(EvalError::InvalidVectorIndex(*fc, index))
+                        }
+                        // Reject values that are too large to fit in a `usize`
+                        None => return Err(EvalError::IndexOutOfBounds(*fc, index, expr)),
+                    },
+                    _ => return Err(EvalError::InvalidVectorIndex(*fc, index)),
+                };
+
+                let kind = match vec.get(idx).cloned() {
+                    Some(kind) => kind,
+                    None => return Err(EvalError::IndexOutOfBounds(*fc, index, expr)),
+                };
+
+                Ok(Value {
+                    kind,
+                    unit: expr.unit,
+                })
+            }
         }
     }
 
@@ -773,6 +805,15 @@ pub enum EvalError {
 
     #[error("Unit error: {}", .0)]
     UnitError(#[from] UnitError),
+
+    #[error("Attempted to index a non-vector value: {} [{}]", .1.kind, .1.unit)]
+    InvalidIndexedType(FC, Value),
+
+    #[error("Index {} is out of bounds of vector value: {} [{}]", .1.kind, .2.kind, .2.unit)]
+    IndexOutOfBounds(FC, Value, Value),
+
+    #[error("Vector indices must be unitless natural numbers but got {} [{}]", .1.kind, .1.unit)]
+    InvalidVectorIndex(FC, Value),
 }
 
 #[derive(Debug, Error)]

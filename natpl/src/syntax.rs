@@ -192,6 +192,11 @@ pub enum Expression {
     UnitOf(FC, Box<Expression>),
     Vector(FC, Vec<Expression>),
     Parenthesised(FC, Box<Expression>),
+    Indexed {
+        fc: FC,
+        expr: Box<Expression>,
+        index: Box<Expression>,
+    },
 }
 
 #[repr(u8)]
@@ -414,6 +419,7 @@ impl HasFC for Expression {
             Expression::UnitOf(fc, _) => *fc,
             Expression::Parenthesised(fc, _) => *fc,
             Expression::Vector(fc, _) => *fc,
+            Expression::Indexed { fc, .. } => *fc,
         }
     }
 }
