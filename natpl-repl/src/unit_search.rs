@@ -141,7 +141,7 @@ fn num_distance(a: &BigDecimal, b: &BigDecimal, handicap: f64) -> Rating {
     }
 
     // Only take numbers between 1 and 1000
-    if div_abs < BigDecimal::from(1) || div_abs >= BigDecimal::from(100) {
+    if div_abs < BigDecimal::from(1) || div_abs >= BigDecimal::from(1000) {
         Rating::max_value()
     } else {
         (div_abs.to_f64().unwrap_or(std::f64::NAN) * handicap) as Rating
