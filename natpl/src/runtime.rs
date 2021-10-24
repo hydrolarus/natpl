@@ -812,7 +812,7 @@ pub enum EvalError {
     #[error("Index {} is out of bounds of vector value: {} [{}]", .1.kind, .2.kind, .2.unit)]
     IndexOutOfBounds(FC, Value, Value),
 
-    #[error("Vector indices must be unitless whole numbers but got {} [{}]", .1.kind, .1.unit)]
+    #[error("Vector indices must be unitless natural numbers but got {} [{}]", .1.kind, .1.unit)]
     InvalidVectorIndex(FC, Value),
 }
 
