@@ -59,6 +59,25 @@ const EXPR_PAD: usize = 12;
 
 pub fn repl(rt: &mut Runtime) -> Result<(), Box<dyn std::error::Error>> {
     let mut rl = rustyline::Editor::<()>::new();
+    let mut history_file = None;
+
+    // Try to load a history file if it exists, or create one if it doesn't, but
+    // don't bail out in the case that we can't do either one
+    if let Some(base_dirs) = directories::BaseDirs::new() {
+        let history = base_dirs.data_dir().join("natpl/history.txt");
+
+        if history.exists() {
+            match rl.load_history(&history) {
+                Ok(_) => history_file = Some(history),
+                Err(e) => eprintln!("[warn] History file exists but failed to load it: {}", e),
+            }
+        } else if std::fs::create_dir(history.parent().unwrap())
+            .and_then(|_| std::fs::write(&history, &[]))
+            .is_ok()
+        {
+            history_file = Some(history);
+        }
+    }
 
     let prompt = format!("{} ", ">>>".blue());
 
@@ -80,6 +99,12 @@ pub fn repl(rt: &mut Runtime) -> Result<(), Box<dyn std::error::Error>> {
                 eprintln!("Error: {}", err);
                 break;
             }
+        }
+    }
+
+    if let Some(history_file) = history_file {
+        if let Err(e) = rl.save_history(&history_file) {
+            eprintln!("[warn] Failed to write new history file contents: {}", e);
         }
     }
 
