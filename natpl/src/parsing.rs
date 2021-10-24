@@ -240,6 +240,18 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                             }),
                         };
                     }
+                    Token::BracketOpen => {
+                        self.next()?;
+                        let index = Box::new(self.parse_expr()?);
+                        let (fc_end, ()) =
+                            self.expect_and_fc(|t| matches!(t, Token::BracketClose))?;
+
+                        lhs = Expression::Indexed {
+                            fc: lhs.fc().merge(fc_end),
+                            expr: Box::new(lhs),
+                            index,
+                        };
+                    }
                     _ => unreachable!(),
                 }
                 continue;
@@ -485,6 +497,7 @@ fn postfix_binding_power(t: Token<'_>) -> Option<(u8, ())> {
     match t {
         Token::ParenOpen => Some((255, ())),
         Token::OpPowNum(_) => Some((91, ())),
+        Token::BracketOpen => Some((255, ())),
         _ => None,
     }
 }
