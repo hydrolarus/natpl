@@ -11,8 +11,9 @@ path = "src/main.rs"
 name = "natpl"
 
 [dependencies]
+directories = "4.0.1"
 natpl = { path = "../natpl" }
 natpl-repl = { path = "../natpl-repl" }
-owo-colors = "2.0"
+owo-colors = "3.0.1"
 rustyline = "*"
 thiserror = "1.0"
