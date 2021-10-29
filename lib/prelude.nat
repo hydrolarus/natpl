@@ -2,6 +2,9 @@ unit meter
 unit second
 unit kilogram
 
+unit hertz = 1/second
+unit Hz = hertz
+
 unit metre = meter
 
 unit m = meter
