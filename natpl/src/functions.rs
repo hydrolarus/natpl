@@ -107,6 +107,7 @@ functions! {
     ),
 
     log | log10 => unary_unitless_float!(|f: Float| f.log10()),
+    log2 => unary_unitless_float!(|f: Float| f.log2()),
     ln => unary_unitless_float!(|f: Float| f.ln()),
 
     exp => unary_unitless_float!(|f: Float| f.exp()),
