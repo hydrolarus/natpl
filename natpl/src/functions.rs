@@ -112,6 +112,10 @@ functions! {
 
     exp => unary_unitless_float!(|f: Float| f.exp()),
 
+    ceil => unary_unitless_float!(|f: Float| f.ceil()),
+    floor => unary_unitless_float!(|f: Float| f.floor()),
+    round => unary_unitless_float!(|f: Float| f.round()),
+
     len => {
         let args = argument_count_check!(1);
         let (arg_fc, arg) = &args[0];
