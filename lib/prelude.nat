@@ -59,7 +59,7 @@ unit astronomical_unit = 149597870700 m
 unit AU = astronomical_unit
 unit au = astronomical_unit
 
-unit lightsecond = c m
+unit lightsecond = c * 1 s
 unit lightyear = 365.25 day / second * lightsecond
 unit ly = lightyear
 
