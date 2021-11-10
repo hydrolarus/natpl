@@ -107,9 +107,14 @@ functions! {
     ),
 
     log | log10 => unary_unitless_float!(|f: Float| f.log10()),
+    log2 => unary_unitless_float!(|f: Float| f.log2()),
     ln => unary_unitless_float!(|f: Float| f.ln()),
 
     exp => unary_unitless_float!(|f: Float| f.exp()),
+
+    ceil => unary_unitless_float!(|f: Float| f.ceil()),
+    floor => unary_unitless_float!(|f: Float| f.floor()),
+    round => unary_unitless_float!(|f: Float| f.round()),
 
     len => {
         let args = argument_count_check!(1);
