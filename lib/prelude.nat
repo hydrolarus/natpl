@@ -53,7 +53,7 @@ unit Å = angstrom
 
 unit micron = μm
 
-c = 299792458
+c = 299792458 m/s
 
 unit astronomical_unit = 149597870700 m
 unit AU = astronomical_unit
