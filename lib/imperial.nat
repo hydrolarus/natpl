@@ -31,6 +31,9 @@ unit acre = 4840 yard^2
 unit cord = 128 foot^3
 unit board_foot = 114 inch^3
 
+# Very scientific. :)
+unit football_field = 100 yard
+
 unit fahrenheit
 
 conv x: celsius ⇒ fahrenheit = (9/5 celsius) + 32

@@ -46,3 +46,25 @@ unit °C = celsius
 
 conv x:K ⇒ °C = (x / K)°C - 273.15°C
 conv x:°C ⇒ K = (x/°C + 273.15)K
+
+unit joule = kg * (m / s)^2
+unit J = joule
+
+unit angstrom = 100 pm
+unit ångström = angstrom
+unit Å = angstrom
+
+unit micron = μm
+
+c = 299792458 m/s
+
+unit astronomical_unit = 149597870700 m
+unit AU = astronomical_unit
+unit au = astronomical_unit
+
+unit lightsecond = c * 1 s
+unit lightyear = 365.25 day / second * lightsecond
+unit ly = lightyear
+
+unit parsec = 648000 au / pi
+unit pc = parsec
