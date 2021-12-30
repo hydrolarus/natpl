@@ -2,7 +2,7 @@ use logos::Logos;
 
 pub type Span = logos::Span;
 
-#[derive(Logos, Debug, Copy, Clone)]
+#[derive(Logos, Debug, Copy, Clone, PartialEq)]
 pub enum Token<'input> {
     #[token("unit")]
     Unit,
