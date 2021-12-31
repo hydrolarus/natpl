@@ -2,7 +2,7 @@ use logos::Logos;
 
 pub type Span = logos::Span;
 
-#[derive(Logos, Debug, Copy, Clone)]
+#[derive(Logos, Debug, Copy, Clone, PartialEq)]
 pub enum Token<'input> {
     #[token("unit")]
     Unit,
@@ -162,4 +162,17 @@ fn unicode_power_num(input: &str) -> Option<u64> {
 
 pub fn tokenise(line: &'_ str) -> Vec<(Token<'_>, Span)> {
     Token::lexer(line).spanned().collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{tokenise, Token};
+
+    #[test]
+    fn simple_unit() {
+        assert_eq!(
+            tokenise("unit gram"),
+            vec![(Token::Unit, 0..4), (Token::Identifier("gram"), 5..9)]
+        );
+    }
 }
