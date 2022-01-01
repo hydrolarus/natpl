@@ -84,7 +84,7 @@ pub enum LineItem {
         unit_to: Expression,
         body: Expression,
     },
-    MaybeDeclarationOrEqualityExpression(DeclarationOrEquality),
+    Declaration(Declaration),
     PrintedExpression(FC, Expression),
     SilentExpression(Expression),
 }
@@ -102,36 +102,18 @@ pub enum DeclarationLhs {
 /// Equality or declaration of variables have the same syntax and
 /// can only be disambiguated at runtime.
 #[derive(Debug, Clone, PartialOrd, Eq, PartialEq, Hash)]
-pub struct DeclarationOrEquality {
+pub struct Declaration {
     pub fc: FC,
     pub lhs: DeclarationLhs,
     pub rhs: Expression,
 }
 
-impl DeclarationOrEquality {
+impl Declaration {
     pub fn declaration_name(&self) -> &Name {
         match &self.lhs {
             DeclarationLhs::Variable(name) => &name.1,
             DeclarationLhs::Function { name, .. } => &name.1,
         }
-    }
-
-    pub fn into_expression(self) -> Item {
-        let lhs = match self.lhs {
-            DeclarationLhs::Variable(ident) => Expression::Variable(ident),
-            DeclarationLhs::Function { fc, name, args } => Expression::Call {
-                fc,
-                base: Box::new(Expression::Variable(name)),
-                args: args.into_iter().map(Expression::Variable).collect(),
-            },
-        };
-        let expr = Expression::InfixOp {
-            fc: self.fc,
-            op: InfixOp::Eq,
-            lhs: Box::new(lhs),
-            rhs: Box::new(self.rhs),
-        };
-        Item::SilentExpression(expr)
     }
 
     pub fn into_declaration(self) -> Item {
@@ -384,7 +366,7 @@ impl HasFC for LineItem {
             LineItem::UnitDeclaration(fc, _) => *fc,
             LineItem::UnitAlias(fc, _, _) => *fc,
             LineItem::ConversionDeclaration { fc, body, .. } => fc.merge(body.fc()),
-            LineItem::MaybeDeclarationOrEqualityExpression(decl) => decl.fc(),
+            LineItem::Declaration(decl) => decl.fc(),
             LineItem::PrintedExpression(fc, _) => *fc,
             LineItem::SilentExpression(expr) => expr.fc(),
         }
@@ -400,7 +382,7 @@ impl HasFC for DeclarationLhs {
     }
 }
 
-impl HasFC for DeclarationOrEquality {
+impl HasFC for Declaration {
     fn fc(&self) -> FC {
         self.fc
     }

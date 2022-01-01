@@ -1,6 +1,6 @@
 use crate::{
     syntax::{
-        DeclarationLhs, DeclarationOrEquality, Expression, HasFC, Identifier, InfixOp, LineItem,
+        DeclarationLhs, Declaration, Expression, HasFC, Identifier, InfixOp, LineItem,
         PrefixOp, SiPrefix, FC,
     },
     tokenising::{Span, Token},
@@ -64,8 +64,8 @@ impl<'toks, 'src> Parser<'toks, 'src> {
             }
         }
 
-        if let Ok(decl_or_eq) = this.parse_declaration_or_equality() {
-            return Ok(LineItem::MaybeDeclarationOrEqualityExpression(decl_or_eq));
+        if let Ok(decl) = this.parse_declaration() {
+            return Ok(LineItem::Declaration(decl));
         } else {
             this.toks = line_toks;
         };
@@ -130,7 +130,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         }
     }
 
-    fn parse_declaration_or_equality(&mut self) -> Result<'src, DeclarationOrEquality> {
+    fn parse_declaration(&mut self) -> Result<'src, Declaration> {
         let name = self.expect_identifier()?;
         let fc_start = name.fc();
 
@@ -156,7 +156,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         if let Some((t, span)) = self.toks.first() {
             Err(ParseError::UnexpectedToken(*t, span.into()))
         } else {
-            Ok(DeclarationOrEquality { fc, lhs, rhs })
+            Ok(Declaration { fc, lhs, rhs })
         }
     }
 
