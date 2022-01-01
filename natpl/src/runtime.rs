@@ -111,19 +111,7 @@ impl Runtime {
                 unit_to,
                 body,
             },
-            LineItem::MaybeDeclarationOrEqualityExpression(decl) => {
-                let name = decl.declaration_name();
-
-                let is_defined = self.units.contains(name)
-                    || self.variables.contains_key(name)
-                    || self.functions.contains_key(name);
-
-                if is_defined {
-                    decl.into_expression()
-                } else {
-                    decl.into_declaration()
-                }
-            }
+            LineItem::Declaration(decl) => decl.into_declaration(),
             LineItem::PrintedExpression(fc, expr) => Item::PrintedExpression(fc, expr),
             LineItem::SilentExpression(expr) => Item::SilentExpression(expr),
         };
@@ -215,16 +203,10 @@ impl Runtime {
                 }
             }
             Item::VariableDeclaration { fc: _, name, rhs } => {
-                let value = self.eval_expr(&rhs, call_stack)?;
-
                 let name = name.name();
-                match self.variables.entry(name.clone()) {
-                    Entry::Occupied(_) => Err(ItemError::VariableRedefined(name)),
-                    Entry::Vacant(entry) => {
-                        let val = entry.insert(value).clone();
-                        Ok(EvalResult::Value(val))
-                    }
-                }
+                let value = self.eval_expr(&rhs, call_stack)?;
+                self.variables.insert(name, value.clone());
+                Ok(EvalResult::Value(value))
             }
             Item::FunctionDeclaration {
                 fc: _,
@@ -233,14 +215,8 @@ impl Runtime {
                 rhs,
             } => {
                 let name = name.name();
-
-                match self.functions.entry(name.clone()) {
-                    Entry::Occupied(_) => Err(ItemError::FunctionRedefined(name)),
-                    Entry::Vacant(entry) => {
-                        entry.insert((arg_names.into_iter().map(|n| n.name()).collect(), rhs));
-                        Ok(EvalResult::Empty)
-                    }
-                }
+                self.functions.insert(name, (arg_names.into_iter().map(|n| n.name()).collect(), rhs));
+                Ok(EvalResult::Empty)
             }
             Item::PrintedExpression(_, e) => {
                 let val = self.eval_expr(&e, call_stack)?;
@@ -760,8 +736,6 @@ pub enum ItemError {
     UnitRedeclared(Name),
     #[error("Conversion redeclared: from [{}] to [{}]", .from, .to)]
     ConversionRedeclared { from: Unit, to: Unit },
-    #[error("Variable redefined: {}", .0)]
-    VariableRedefined(Name),
     #[error("Function redefined: {}", .0)]
     FunctionRedefined(Name),
 
