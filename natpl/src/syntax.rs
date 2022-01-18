@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use fraction::BigDecimal;
 
-use crate::tokenising::Span;
+use crate::{source_cache::SourceId, tokenising::Span};
 
 pub type Name = String;
 
@@ -22,6 +22,7 @@ impl Identifier {
 /// File context storing a span of the input
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct FC {
+    pub source: SourceId,
     pub start: usize,
     pub end: usize,
 }
@@ -29,13 +30,18 @@ pub struct FC {
 impl FC {
     pub fn from_span(span: Span) -> Self {
         Self {
-            start: span.start,
-            end: span.end,
+            source: span.0,
+            start: span.1.start,
+            end: span.1.end,
         }
     }
 
     pub fn merge(self, other: FC) -> Self {
+        debug_assert_eq!(self.source, other.source);
+
         Self {
+            source: self.source,
+
             start: self.start.min(other.start),
             end: self.end.max(other.end),
         }
@@ -360,7 +366,11 @@ impl HasFC for Item {
 impl HasFC for LineItem {
     fn fc(&self) -> FC {
         match self {
-            LineItem::Empty => FC { start: 0, end: 0 },
+            LineItem::Empty => FC {
+                source: SourceId::Virtual(0),
+                start: 0,
+                end: 0,
+            }, // FIXME actually do this properly when reworking the AST??
             LineItem::VarSearch(fc) => *fc,
             LineItem::UnitSearch(expr) => expr.fc(),
             LineItem::UnitDeclaration(fc, _) => *fc,

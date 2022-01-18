@@ -1,6 +1,7 @@
 use natpl::{
     parsing::Parser,
     runtime::{CallStack, EvalResult, ItemError, Runtime},
+    source_cache::SourceCache,
     syntax::{Expression, Name},
     tokenising,
     value_unit::Unit,
@@ -43,7 +44,10 @@ pub enum ReadEvalResult {
 const ANS_NAME: &str = "ans";
 
 pub fn read_eval(rt: &mut Runtime, input: &str) -> ReadEvalResult {
-    let toks = tokenising::tokenise(input);
+    let mut cache = SourceCache::default();
+    let id = cache.add_virtual("<stdin>", input.to_string());
+
+    let toks = tokenising::tokenise(id, input);
     match Parser::parse_line(&toks) {
         Ok(line) => {
             let res = match rt.eval_line_item(line, &mut CallStack::default()) {

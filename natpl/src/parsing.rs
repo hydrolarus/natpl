@@ -1,7 +1,7 @@
 use crate::{
     syntax::{
-        DeclarationLhs, Declaration, Expression, HasFC, Identifier, InfixOp, LineItem,
-        PrefixOp, SiPrefix, FC,
+        Declaration, DeclarationLhs, Expression, HasFC, Identifier, InfixOp, LineItem, PrefixOp,
+        SiPrefix, FC,
     },
     tokenising::{Span, Token},
 };

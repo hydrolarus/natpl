@@ -6,3 +6,5 @@ pub mod parsing;
 pub mod runtime;
 pub mod syntax;
 pub mod tokenising;
+
+pub mod source_cache;

@@ -215,7 +215,10 @@ impl Runtime {
                 rhs,
             } => {
                 let name = name.name();
-                self.functions.insert(name, (arg_names.into_iter().map(|n| n.name()).collect(), rhs));
+                self.functions.insert(
+                    name,
+                    (arg_names.into_iter().map(|n| n.name()).collect(), rhs),
+                );
                 Ok(EvalResult::Empty)
             }
             Item::PrintedExpression(_, e) => {

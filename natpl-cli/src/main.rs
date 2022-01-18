@@ -6,6 +6,7 @@ use thiserror::Error;
 use natpl::{
     parsing,
     runtime::{self, CallStack, EvalResult, Runtime},
+    source_cache::SourceCache,
     syntax::HasFC,
     tokenising,
 };
@@ -22,8 +23,11 @@ pub enum LoadFileError {
 ///
 /// If `print` is true then printed-expressions are printed to stdout.
 pub fn load_file(rt: &mut Runtime, content: &str, print: bool) -> Result<(), LoadFileError> {
+    let mut cache = SourceCache::default();
+    let id = cache.add_virtual("<input file>", content.to_string());
+
     for (line, source) in content.lines().enumerate() {
-        let toks = tokenising::tokenise(source);
+        let toks = tokenising::tokenise(id, source);
         let item = match parsing::Parser::parse_line(&toks) {
             Ok(item) => item,
             Err(err) => {
