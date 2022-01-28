@@ -193,14 +193,6 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                         expr: Box::new(rhs),
                     }
                 }
-                Token::OpSqrt => {
-                    let t_fc = FC::from_span(span.clone());
-                    Expression::Call {
-                        fc: t_fc.merge(rhs.fc()),
-                        base: Box::new(Expression::Variable(Identifier(t_fc, "sqrt".to_string()))),
-                        args: vec![rhs],
-                    }
-                }
                 _ => unreachable!(),
             }
         } else {
@@ -209,8 +201,8 @@ impl<'toks, 'src> Parser<'toks, 'src> {
 
         #[allow(clippy::while_let_loop)]
         loop {
-            let (fc, t) = match self.toks.first() {
-                Some((t, span)) => (span.into(), *t),
+            let (_fc, t) = match self.toks.first() {
+                Some((t, span)) => (FC::from(span), *t),
                 None => break,
             };
 
@@ -226,18 +218,6 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                             fc: lhs.fc().merge(args.fc),
                             base: Box::new(lhs),
                             args: args.elems,
-                        };
-                    }
-                    Token::OpPowNum(n) => {
-                        self.next()?;
-                        lhs = Expression::InfixOp {
-                            fc: lhs.fc().merge(fc),
-                            op: InfixOp::Pow,
-                            lhs: Box::new(lhs),
-                            rhs: Box::new(Expression::IntegerLit {
-                                fc,
-                                val: BigDecimal::from(n),
-                            }),
                         };
                     }
                     Token::BracketOpen => {
@@ -473,7 +453,6 @@ fn prefix_binding_power(t: Token<'_>) -> Option<((), u8)> {
     match t {
         Token::OpAdd => Some(((), 100)),
         Token::OpSub => Some(((), 100)),
-        Token::OpSqrt => Some(((), 120)),
         _ => None,
     }
 }
@@ -501,7 +480,6 @@ fn infix_binding_power(t: Token<'_>) -> Option<(u8, u8, InfixOp)> {
 fn postfix_binding_power(t: Token<'_>) -> Option<(u8, ())> {
     match t {
         Token::ParenOpen => Some((255, ())),
-        Token::OpPowNum(_) => Some((91, ())),
         Token::BracketOpen => Some((255, ())),
         _ => None,
     }
