@@ -46,6 +46,9 @@ pub enum Token<'input> {
     #[token("÷")]
     OpDiv,
 
+    #[token("to")]
+    OpTo,
+
     #[token("in")]
     OpIn,
 

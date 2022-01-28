@@ -51,20 +51,11 @@ A line can also be an expression. The expression will be evaluated.
 To print an expression, the line has to begin with `>`.
 This will print the symbolic expression and the evaluated value.
 
-When `=` is used without any lone unbound variables on either side it
-acts as an equality check.
-
-Equality checks behave like assertions since an inequality implies
-that some error was made.
-
-```
-speed * time = distance
-```
 
 To get the unit of an expression, square brackets are used.
 
 ```
-[speed] = m / s
+[speed]
 ```
 
 Any indented text will count as belonging to the last definition.

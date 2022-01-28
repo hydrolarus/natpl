@@ -567,7 +567,7 @@ impl Runtime {
                     ))
                 }
             }
-            (InfixOp::In, _, _) => {
+            (InfixOp::To, _, _) => {
                 let lunit = lhs.unit.clone();
                 let runit = rhs.unit.clone();
 
@@ -677,7 +677,7 @@ fn infix_unit(fc: FC, op: InfixOp, lhs: &Value, rhs: &Value) -> Result<Unit, Uni
                 )),
             }
         }
-        InfixOp::In => Ok(rhs.unit.clone()),
+        InfixOp::To => Ok(rhs.unit.clone()),
         InfixOp::Eq => {
             if lhs.unit == rhs.unit {
                 Ok(lhs.unit.clone())

@@ -467,7 +467,8 @@ fn infix_binding_power(t: Token<'_>) -> Option<(u8, u8, InfixOp)> {
         Token::OpAdd => Some((70, 71, InfixOp::Add)),
         Token::OpSub => Some((70, 71, InfixOp::Sub)),
 
-        Token::OpIn => Some((50, 51, InfixOp::In)),
+        Token::OpIn => Some((50, 51, InfixOp::Div)),
+        Token::OpTo => Some((40, 41, InfixOp::To)),
 
         Token::OpEq => Some((20, 21, InfixOp::Eq)),
         Token::OpNeq => Some((20, 21, InfixOp::Neq)),
@@ -508,7 +509,8 @@ fn identifier_maybe_unit_prefix(name: &str) -> Option<(SiPrefix, &str)> {
         ("f", Femto),
         ("p", Pico),
         ("n", Nano),
-        ("μ", Micro),
+        ("u", Micro),
+        ("μ", Micro), // remove this?
         ("m", Milli),
         ("c", Centi),
         ("d", Deci),

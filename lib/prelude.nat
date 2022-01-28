@@ -54,7 +54,7 @@ unit angstrom = 100 pm
 unit ångström = angstrom
 unit Å = angstrom
 
-unit micron = μm
+unit micron = micrometre
 
 c = 299792458 m/s
 

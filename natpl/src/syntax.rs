@@ -305,7 +305,7 @@ pub enum InfixOp {
     Mod,
 
     Pow,
-    In,
+    To,
 
     Eq,
     Neq,
@@ -321,7 +321,7 @@ impl Display for InfixOp {
             InfixOp::Div => "/",
             InfixOp::Mod => "mod",
             InfixOp::Pow => "^",
-            InfixOp::In => "in",
+            InfixOp::To => "to",
             InfixOp::Eq => "=",
             InfixOp::Neq => "≠",
             InfixOp::Gt => ">",
