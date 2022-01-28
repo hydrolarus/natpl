@@ -317,14 +317,19 @@ impl<'toks, 'src> Parser<'toks, 'src> {
             }
             Token::IntegerLit(val) => {
                 let _ = self.next()?;
-                let val = BigDecimal::from_decimal_str(val).unwrap();
+                let val = BigDecimal::from_decimal_str(&strip_underscores(val)).unwrap();
                 Ok(Expression::IntegerLit { fc, val })
             }
             Token::FloatLit((int, dec)) => {
                 let _ = self.next()?;
                 Ok(Expression::FloatLit {
                     fc,
-                    val: BigDecimal::from_decimal_str(&format!("{}.{}", int, dec)).unwrap(),
+                    val: BigDecimal::from_decimal_str(&format!(
+                        "{}.{}",
+                        strip_underscores(int),
+                        strip_underscores(dec)
+                    ))
+                    .unwrap(),
                 })
             }
             Token::ScientificFloatLit((int, dec, exp)) => {
@@ -332,7 +337,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                 Ok(Expression::FloatLit {
                     fc,
                     val: crate::num::from_decimal_str_and_exp(
-                        &format!("{}.{}", int, dec),
+                        &format!("{}.{}", strip_underscores(int), strip_underscores(dec)),
                         exp as _,
                     ),
                 })
@@ -341,7 +346,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                 let _ = self.next()?;
                 Ok(Expression::FloatLit {
                     fc,
-                    val: crate::num::from_decimal_str_and_exp(&val.to_string(), exp as _),
+                    val: crate::num::from_decimal_str_and_exp(&strip_underscores(val), exp as _),
                 })
             }
             t => {
@@ -546,6 +551,10 @@ fn identifier_maybe_unit_prefix(name: &str) -> Option<(SiPrefix, &str)> {
         }
     }
     None
+}
+
+fn strip_underscores(s: &str) -> String {
+    s.chars().filter(|c| *c != '_').collect()
 }
 
 struct ParenListParseResult<T> {

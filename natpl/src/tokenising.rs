@@ -79,10 +79,10 @@ pub enum Token<'input> {
     #[regex("(\\p{XID_Start}|_|°)(\\p{XID_Continue}|'|°)*")]
     Identifier(&'input str),
 
-    #[regex("[0-9]+")]
+    #[regex("[0-9][_0-9]*")]
     IntegerLit(&'input str),
 
-    #[regex(r"[0-9]+\.[0-9]+", |lex| {
+    #[regex(r"[0-9][_0-9]*\.[0-9][_0-9]*", |lex| {
         let mut parts = lex.slice().split('.');
         let integer = parts.next()?;
         let decimal = parts.next()?;
@@ -90,7 +90,7 @@ pub enum Token<'input> {
     })]
     FloatLit((&'input str, &'input str)),
 
-    #[regex(r"[0-9]+\.[0-9]+x10\^-?[0-9]+", |lex| {
+    #[regex(r"[0-9][_0-9]*\.[0-9][_0-9]*x10\^-?[0-9]+", |lex| {
         let mut s = lex.slice().split("x10^");
         let (integer, decimal) = {
             let s = s.next()?;
@@ -102,7 +102,7 @@ pub enum Token<'input> {
         let exp = s.next()?.parse().ok()?;
         Some((integer, decimal, exp))
     })]
-    #[regex(r"[0-9]+\.[0-9]+x10(⁰|¹|²|³|⁴|⁵|⁶|⁷|⁸|⁹)+", |lex| {
+    #[regex(r"[0-9][_0-9]*\.[0-9][_0-9]*x10(⁰|¹|²|³|⁴|⁵|⁶|⁷|⁸|⁹)+", |lex| {
         let mut s = lex.slice().split("x10");
         let (integer, decimal) = {
             let s = s.next()?;
@@ -116,13 +116,13 @@ pub enum Token<'input> {
     })]
     ScientificFloatLit((&'input str, &'input str, i64)),
 
-    #[regex(r"[0-9]+x10\^(-)?[0-9]+", |lex| {
+    #[regex(r"[0-9][_0-9]*x10\^(-)?[0-9]+", |lex| {
         let mut s = lex.slice().split("x10^");
         let mantissa = s.next()?;
         let exp = s.next()?.parse().ok()?;
         Some((mantissa, exp))
     })]
-    #[regex(r"[0-9]++x10(⁰|¹|²|³|⁴|⁵|⁶|⁷|⁸|⁹)+", |lex| {
+    #[regex(r"[0-9][_0-9]*x10(⁰|¹|²|³|⁴|⁵|⁶|⁷|⁸|⁹)+", |lex| {
         let mut s = lex.slice().split("x10");
         let mantissa = s.next()?;
         let exp = unicode_power_num(s.next()?)?;
