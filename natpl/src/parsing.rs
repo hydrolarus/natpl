@@ -73,7 +73,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         let expr = this.parse_expr()?;
 
         if let Some((t, span)) = this.toks.first() {
-            Err(ParseError::UnexpectedToken(*t, span.into()))
+            Err(ParseError::UnexpectedToken(t.clone(), span.into()))
         } else {
             Ok(LineItem::SilentExpression(expr))
         }
@@ -97,7 +97,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         };
 
         if let Some((t, span)) = self.toks.first() {
-            Err(ParseError::UnexpectedToken(*t, span.into()))
+            Err(ParseError::UnexpectedToken(t.clone(), span.into()))
         } else {
             Ok((fc.merge(name.fc()), name, expr))
         }
@@ -154,7 +154,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         let fc = fc_start.merge(rhs.fc());
 
         if let Some((t, span)) = self.toks.first() {
-            Err(ParseError::UnexpectedToken(*t, span.into()))
+            Err(ParseError::UnexpectedToken(t.clone(), span.into()))
         } else {
             Ok(Declaration { fc, lhs, rhs })
         }
@@ -164,7 +164,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         let (fc, ()) = self.expect_and_fc(|t| matches!(t, Token::OpGt))?;
         let expr = self.parse_expr()?;
         if let Some((t, span)) = self.toks.first() {
-            Err(ParseError::UnexpectedToken(*t, span.into()))
+            Err(ParseError::UnexpectedToken(t.clone(), span.into()))
         } else {
             Ok((fc.merge(expr.fc()), expr))
         }
@@ -177,12 +177,12 @@ impl<'toks, 'src> Parser<'toks, 'src> {
     fn parse_expr_bp(&mut self, min_bp: u8) -> Result<'src, Expression> {
         let (t, span) = self.toks.first().ok_or(ParseError::UnexpectedEnd)?;
 
-        let mut lhs = if let Some(((), bp)) = prefix_binding_power(*t) {
+        let mut lhs = if let Some(((), bp)) = prefix_binding_power(t) {
             self.next()?;
             let rhs = self.parse_expr_bp(bp)?;
-            match *t {
+            match t {
                 Token::OpAdd | Token::OpSub => {
-                    let op = match *t {
+                    let op = match t {
                         Token::OpAdd => PrefixOp::Pos,
                         Token::OpSub => PrefixOp::Neg,
                         _ => unreachable!(),
@@ -202,7 +202,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         #[allow(clippy::while_let_loop)]
         loop {
             let (_fc, t) = match self.toks.first() {
-                Some((t, span)) => (FC::from(span), *t),
+                Some((t, span)) => (FC::from(span), t),
                 None => break,
             };
 
@@ -283,6 +283,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                 }
             }
             Token::Identifier(name) => {
+                let name = *name;
                 let _ = self.next()?;
                 if let Some((prefix, stripped)) = identifier_maybe_unit_prefix(name) {
                     Ok(Expression::MaybeUnitPrefix {
@@ -295,12 +296,19 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                     Ok(Expression::Variable(Identifier(fc, name.into())))
                 }
             }
+            Token::StringLiteral(val) => {
+                let val: String = val.clone();
+                let _ = self.next()?;
+                Ok(Expression::StringLit { fc, val })
+            }
             Token::IntegerLit(val) => {
+                let val = *val;
                 let _ = self.next()?;
                 let val = BigDecimal::from_decimal_str(&strip_underscores(val)).unwrap();
                 Ok(Expression::IntegerLit { fc, val })
             }
             Token::FloatLit((int, dec)) => {
+                let (int, dec) = (*int, *dec);
                 let _ = self.next()?;
                 Ok(Expression::FloatLit {
                     fc,
@@ -313,6 +321,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                 })
             }
             Token::ScientificFloatLit((int, dec, exp)) => {
+                let (int, dec, exp) = (*int, *dec, *exp);
                 let _ = self.next()?;
                 Ok(Expression::FloatLit {
                     fc,
@@ -323,6 +332,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                 })
             }
             Token::ScientificIntegerLit((val, exp)) => {
+                let (val, exp) = (*val, *exp);
                 let _ = self.next()?;
                 Ok(Expression::FloatLit {
                     fc,
@@ -330,6 +340,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
                 })
             }
             t => {
+                let t = t.clone();
                 let _ = self.next()?;
                 Err(ParseError::UnexpectedToken(t, fc))
             }
@@ -338,7 +349,7 @@ impl<'toks, 'src> Parser<'toks, 'src> {
 
     fn expect_identifier(&mut self) -> Result<'src, Identifier> {
         self.expect(|fc, t| match t {
-            Token::Identifier(name) => Some(Identifier(fc, name.into())),
+            Token::Identifier(name) => Some(Identifier(fc, (*name).into())),
             _ => None,
         })
     }
@@ -386,44 +397,44 @@ impl<'toks, 'src> Parser<'toks, 'src> {
         }
     }
 
-    fn peek(&self) -> Option<Token<'src>> {
+    fn peek(&self) -> Option<&Token<'src>> {
         match self.toks {
             [] => None,
-            [(t, _), ..] => Some(*t),
+            [(t, _), ..] => Some(t),
         }
     }
 
-    fn peek_with_fc(&self) -> Option<(Token<'src>, FC)> {
+    fn peek_with_fc(&self) -> Option<(&Token<'src>, FC)> {
         match self.toks {
             [] => None,
-            [(t, span), _rest @ ..] => Some((*t, FC::from_span(span.clone()))),
+            [(t, span), _rest @ ..] => Some((t, FC::from_span(span.clone()))),
         }
     }
 
-    fn next(&mut self) -> Result<'src, Token<'src>> {
+    fn next(&mut self) -> Result<'src, &Token<'src>> {
         match self.toks {
             [] => Err(ParseError::UnexpectedEnd),
             [(t, _), rest @ ..] => {
                 self.toks = rest;
-                Ok(*t)
+                Ok(t)
             }
         }
     }
 
     fn expect<T: ExpectRet>(
         &mut self,
-        f: impl FnOnce(FC, Token<'src>) -> T,
+        f: impl FnOnce(FC, &Token<'src>) -> T,
     ) -> Result<'src, T::RetType> {
         match self.toks {
             [] => Err(ParseError::UnexpectedEnd),
             [(t, span), rest @ ..] => {
                 let fc = FC::from(span);
-                match f(fc, *t).into_option() {
+                match f(fc, t).into_option() {
                     Some(res) => {
                         self.toks = rest;
                         Ok(res)
                     }
-                    None => Err(ParseError::UnexpectedToken(*t, fc)),
+                    None => Err(ParseError::UnexpectedToken(t.clone(), fc)),
                 }
             }
         }
@@ -431,25 +442,25 @@ impl<'toks, 'src> Parser<'toks, 'src> {
 
     fn expect_and_fc<T: ExpectRet>(
         &mut self,
-        f: impl FnOnce(Token<'src>) -> T,
+        f: impl FnOnce(&Token<'src>) -> T,
     ) -> Result<'src, (FC, T::RetType)> {
         match self.toks {
             [] => Err(ParseError::UnexpectedEnd),
             [(t, span), rest @ ..] => {
                 let fc = FC::from(span);
-                match f(*t).into_option() {
+                match f(t).into_option() {
                     Some(res) => {
                         self.toks = rest;
                         Ok((fc, res))
                     }
-                    None => Err(ParseError::UnexpectedToken(*t, fc)),
+                    None => Err(ParseError::UnexpectedToken(t.clone(), fc)),
                 }
             }
         }
     }
 }
 
-fn prefix_binding_power(t: Token<'_>) -> Option<((), u8)> {
+fn prefix_binding_power(t: &Token<'_>) -> Option<((), u8)> {
     match t {
         Token::OpAdd => Some(((), 100)),
         Token::OpSub => Some(((), 100)),
@@ -457,7 +468,7 @@ fn prefix_binding_power(t: Token<'_>) -> Option<((), u8)> {
     }
 }
 
-fn infix_binding_power(t: Token<'_>) -> Option<(u8, u8, InfixOp)> {
+fn infix_binding_power(t: &Token<'_>) -> Option<(u8, u8, InfixOp)> {
     match t {
         Token::OpPow => Some((151, 150, InfixOp::Pow)),
         Token::Identifier(_) => Some((90, 91, InfixOp::Mul)),
@@ -478,7 +489,7 @@ fn infix_binding_power(t: Token<'_>) -> Option<(u8, u8, InfixOp)> {
     }
 }
 
-fn postfix_binding_power(t: Token<'_>) -> Option<(u8, ())> {
+fn postfix_binding_power(t: &Token<'_>) -> Option<(u8, ())> {
     match t {
         Token::ParenOpen => Some((255, ())),
         Token::BracketOpen => Some((255, ())),

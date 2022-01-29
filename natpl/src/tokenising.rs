@@ -3,7 +3,7 @@ use logos::Logos;
 
 pub type Span = (SourceId, std::ops::Range<usize>);
 
-#[derive(Logos, Debug, Copy, Clone, PartialEq)]
+#[derive(Logos, Debug, Clone, PartialEq)]
 pub enum Token<'input> {
     #[token("unit")]
     Unit,
@@ -73,6 +73,9 @@ pub enum Token<'input> {
     #[token(",")]
     Comma,
 
+    #[token("\"", parse_string_literal)]
+    StringLiteral(String),
+
     #[regex("(\\p{XID_Start}|_|°)(\\p{XID_Continue}|'|°)*")]
     Identifier(&'input str),
 
@@ -115,6 +118,44 @@ pub enum Token<'input> {
     // line comments
     #[regex(r"#[^\n]*", logos::skip)]
     Error,
+}
+
+fn parse_string_literal<'src>(lex: &mut logos::Lexer<'src, Token<'src>>) -> Option<String> {
+    let s = lex.remainder();
+
+    let mut buf = String::new();
+
+    let mut escape = false;
+
+    for c in s.chars() {
+        if escape {
+            match c {
+                'n' => buf.push('\n'),
+                'r' => buf.push('\r'),
+                '\\' => buf.push('\\'),
+                '"' => buf.push('"'),
+                _ => return None,
+            }
+            lex.bump(1);
+            escape = false;
+        } else {
+            if c == '"' {
+                lex.bump(1);
+                return Some(buf);
+            }
+
+            if c == '\\' {
+                escape = true;
+                lex.bump(1);
+                continue;
+            }
+
+            buf.push(c);
+            lex.bump(c.len_utf8());
+        }
+    }
+
+    None
 }
 
 pub fn tokenise(source_id: SourceId, line: &'_ str) -> Vec<(Token<'_>, Span)> {

@@ -13,6 +13,7 @@ pub struct Value {
 pub enum ValueKind {
     FunctionRef(Name),
     Number(BigDecimal),
+    String(String),
     Vector(Vec<ValueKind>),
 }
 
@@ -26,7 +27,7 @@ pub enum ValueKindNumberZipResult {
 impl ValueKind {
     pub fn map_number(&self, f: &impl Fn(&BigDecimal) -> BigDecimal) -> Option<ValueKind> {
         match self {
-            ValueKind::FunctionRef(_) => None,
+            ValueKind::FunctionRef(_) | ValueKind::String(_) => None,
             ValueKind::Number(n) => Some(ValueKind::Number(f(n))),
             ValueKind::Vector(elems) => {
                 let elems = elems
@@ -108,6 +109,7 @@ impl Display for ValueKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ValueKind::FunctionRef(name) => f.write_fmt(format_args!("<function {}>", name)),
+            ValueKind::String(val) => f.write_fmt(format_args!("{:?}", val)),
             ValueKind::Number(num) => f.write_str(&display_bigdec(num)),
             ValueKind::Vector(nums) => {
                 f.write_str("(")?;

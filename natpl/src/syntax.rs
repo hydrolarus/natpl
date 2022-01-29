@@ -149,6 +149,10 @@ pub enum Expression {
         fc: FC,
         val: BigDecimal,
     },
+    StringLit {
+        fc: FC,
+        val: String,
+    },
 
     MaybeUnitPrefix {
         fc: FC,
@@ -403,6 +407,7 @@ impl HasFC for Expression {
         match self {
             Expression::IntegerLit { fc, .. } => *fc,
             Expression::FloatLit { fc, .. } => *fc,
+            Expression::StringLit { fc, .. } => *fc,
             Expression::MaybeUnitPrefix { fc, .. } => *fc,
             Expression::Variable(ident) => ident.fc(),
             Expression::Call { fc, .. } => *fc,

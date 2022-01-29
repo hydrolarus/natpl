@@ -242,6 +242,10 @@ impl Runtime {
                 kind: ValueKind::Number(val.clone()),
                 unit: Unit::new(),
             }),
+            Expression::StringLit { fc: _, val } => Ok(Value {
+                kind: ValueKind::String(val.clone()),
+                unit: Unit::new(),
+            }),
             Expression::MaybeUnitPrefix {
                 fc,
                 name,
@@ -305,6 +309,9 @@ impl Runtime {
                 match op {
                     crate::syntax::PrefixOp::Pos => match &mut val.kind {
                         ValueKind::Number(_) => Ok(val),
+                        ValueKind::String(_) => {
+                            Err(EvalError::InvalidPrefixOperator(*fc, *op, val))
+                        }
                         ValueKind::FunctionRef(_) => {
                             Err(EvalError::InvalidPrefixOperator(*fc, *op, val))
                         }
@@ -319,6 +326,9 @@ impl Runtime {
                         ) -> Result<ValueKind, EvalError> {
                             match val_kind {
                                 ValueKind::Number(num) => Ok(ValueKind::Number(-&*num)),
+                                ValueKind::String(_) => {
+                                    Err(EvalError::InvalidPrefixOperator(*fc, *op, val.clone()))
+                                }
                                 ValueKind::FunctionRef(_) => {
                                     Err(EvalError::InvalidPrefixOperator(*fc, *op, val.clone()))
                                 }
@@ -625,7 +635,9 @@ fn apply_prefix(fc: FC, prefix: SiPrefix, val: Value) -> Result<Value, EvalError
         kind: &ValueKind,
     ) -> Result<ValueKind, EvalError> {
         match kind {
-            ValueKind::FunctionRef(_) => Err(EvalError::InvalidSiPrefix(fc, prefix, val.clone())),
+            ValueKind::FunctionRef(_) | ValueKind::String(_) => {
+                Err(EvalError::InvalidSiPrefix(fc, prefix, val.clone()))
+            }
             ValueKind::Number(n) => Ok(ValueKind::Number(&prefix.value() * n)),
             ValueKind::Vector(v) => {
                 let vals = v
