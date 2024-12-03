@@ -14,5 +14,5 @@ directories = "4.0.1"
 natpl = { path = "../natpl" }
 natpl-repl = { path = "../natpl-repl" }
 owo-colors = "3.0.1"
-rustyline = "*"
+rustyline = "9.0.0"
 thiserror = "1.0"
